@@ -35,7 +35,6 @@ async fn main() -> std::io::Result<()> {
 
     let pool = pg_config.create_pool(Some(Runtime::Tokio1), tokio_postgres::NoTls)
     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
-     info!("Database pool created successfully");
 
     let service = DepthService::new(pool.clone());
     setup_jobs(pool.clone()).await.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
