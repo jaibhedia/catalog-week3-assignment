@@ -2,6 +2,7 @@ use actix_web::{App, HttpServer, web};
 use deadpool_postgres::{Config as PgConfig, Runtime};
 use dotenv::dotenv;
 use std::env;
+use url::Url; // Add this dependency to Cargo.toml
 use crate::routes::config;
 use crate::services::DepthService;
 use crate::jobs::setup_jobs;
@@ -15,16 +16,22 @@ mod services;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok(); // Load .env for local dev, ignored on Render if not present
+    dotenv().ok();
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
     // Use DATABASE_URL from Render, fallback for local testing
     let database_url = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:Bhakwaas@csd37@localhost:5432/api".to_string());
-    
-    // Parse DATABASE_URL into PgConfig
-    let pg_config = PgConfig::from_url(&database_url)
+
+    // Parse the DATABASE_URL
+    let url = Url::parse(&database_url)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+    let mut pg_config = PgConfig::new();
+    pg_config.user = url.username().is_empty().then(|| None).unwrap_or(Some(url.username().to_string()));
+    pg_config.password = url.password().map(String::from);
+    pg_config.host = Some(url.host_str().unwrap_or("localhost").to_string());
+    pg_config.port = Some(url.port().unwrap_or(5432));
+    pg_config.dbname = Some(url.path().trim_start_matches('/').to_string());
 
     let pool = pg_config.create_pool(Some(Runtime::Tokio1), tokio_postgres::NoTls)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
@@ -32,7 +39,6 @@ async fn main() -> std::io::Result<()> {
     let service = DepthService::new(pool.clone());
     setup_jobs(pool.clone()).await.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
-    // Use PORT from Render, default to 8080 for local testing
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
     let bind_address = format!("0.0.0.0:{}", port);
 
