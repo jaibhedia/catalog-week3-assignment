@@ -44,4 +44,17 @@ impl DepthService {
     pub async fn fetch_and_store_runepools(&self, client: &reqwest::Client) -> Result<(), Box<dyn std::error::Error>> {
         fetch_runepool_data(&self.db.pool, client).await
     }
+    pub async fn get_pool_activity(
+        &self,
+        pool_id: String,
+        start_date: Option<DateTime<Utc>>,
+        end_date: Option<DateTime<Utc>>,
+        page: i64,
+        limit: i64,
+    ) -> Result<Vec<PoolActivity>, Box<dyn std::error::Error>> {
+        let offset = (page - 1) * limit;
+        db::get_pool_activity(&self.db, &pool_id, start_date, end_date, limit, offset)
+            .await
+            .map_err(Into::into)
+    }
 }
