@@ -1,0 +1,346 @@
+openapi: 3.0.0
+info:
+  title: Midgard API Integration
+  description: API for querying historical data from the Midgard API, including depth and price history, earnings history, swaps history, and RUNEPool history.
+  version: 1.0.0
+
+paths:
+  /api/depth-history:
+    get:
+      summary: Retrieve depth and price history data
+      description: Fetches historical depth and price data for liquidity pools.
+      parameters:
+        - name: start_date
+          in: query
+          description: Start of the date range in ISO 8601 format (e.g., 2023-08-01T00:00:00Z)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End of the date range in ISO 8601 format (e.g., 2023-09-01T00:00:00Z)
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: liquidity_gt
+          in: query
+          description: Filter for liquidity (asset_depth) greater than this value
+          required: false
+          schema:
+            type: integer
+        - name: sort_by
+          in: query
+          description: Field to sort by (e.g., timestamp, asset_depth)
+          required: false
+          schema:
+            type: string
+        - name: order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Number of records per page
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Depth'
+        '400':
+          description: Bad request (invalid parameters)
+        '500':
+          description: Internal server error
+
+  /api/swaps-history:
+    get:
+      summary: Retrieve swaps history data
+      description: Fetches historical swap data, including trading volume.
+      parameters:
+        - name: start_date
+          in: query
+          description: Start of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: sort_by
+          in: query
+          description: Field to sort by (e.g., timestamp, volume_usd)
+          required: false
+          schema:
+            type: string
+        - name: order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Number of records per page
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Swap'
+        '400':
+          description: Bad request (invalid parameters)
+        '500':
+          description: Internal server error
+
+  /api/earnings-history:
+    get:
+      summary: Retrieve earnings history data
+      description: Fetches historical earnings data for liquidity pools.
+      parameters:
+        - name: start_date
+          in: query
+          description: Start of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: sort_by
+          in: query
+          description: Field to sort by (e.g., timestamp, liquidity_fees)
+          required: false
+          schema:
+            type: string
+        - name: order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Number of records per page
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Earning'
+        '400':
+          description: Bad request (invalid parameters)
+        '500':
+          description: Internal server error
+
+  /api/runepool-history:
+    get:
+      summary: Retrieve RUNEPool history data
+      description: Fetches historical data for RUNEPool total members and units.
+      parameters:
+        - name: start_date
+          in: query
+          description: Start of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: sort_by
+          in: query
+          description: Field to sort by (e.g., timestamp, total_units)
+          required: false
+          schema:
+            type: string
+        - name: order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Number of records per page
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunePool'
+        '400':
+          description: Bad request (invalid parameters)
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Depth:
+      type: object
+      properties:
+        pool:
+          type: string
+          description: The liquidity pool identifier
+          example: BTC.BTC
+        asset_depth:
+          type: integer
+          description: The depth of the asset in the pool
+          example: 150000
+        rune_depth:
+          type: integer
+          description: The depth of RUNE in the pool
+          example: 300000
+        asset_price:
+          type: number
+          description: The price of the asset in RUNE
+          example: 0.5
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp of the record
+          example: 2023-08-01T00:00:00Z
+
+    Swap:
+      type: object
+      properties:
+        pool:
+          type: string
+          description: The liquidity pool identifier
+          example: BTC.BTC
+        from_asset:
+          type: string
+          description: The asset being swapped from
+          example: BTC
+        to_asset:
+          type: string
+          description: The asset being swapped to
+          example: RUNE
+        amount:
+          type: integer
+          description: The amount of the asset swapped
+          example: 500
+        fee:
+          type: integer
+          description: The fee for the swap
+          example: 10
+        volume_usd:
+          type: number
+          description: The trading volume in USD
+          example: 1000.0
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp of the swap
+          example: 2023-08-01T00:00:00Z
+
+    Earning:
+      type: object
+      properties:
+        pool:
+          type: string
+          description: The liquidity pool identifier
+          example: BTC.BTC
+        liquidity_fees:
+          type: integer
+          description: The liquidity fees earned
+          example: 200
+        block_rewards:
+          type: integer
+          description: The block rewards earned
+          example: 300
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp of the earning record
+          example: 2023-08-01T00:00:00Z
+
+    RunePool:
+      type: object
+      properties:
+        total_units:
+          type: integer
+          description: The total units in the RUNEPool
+          example: 10000
+        members_count:
+          type: integer
+          description: The number of members in the RUNEPool
+          example: 50
+        value:
+          type: integer
+          description: The total value in the RUNEPool
+          example: 5000
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp of the record
+          example: 2023-08-01T00:00:00Z
