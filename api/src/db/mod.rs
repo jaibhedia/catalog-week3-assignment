@@ -24,14 +24,14 @@ impl Database {
         self.find_records("earnings_history", params).await
     }
 
-    pub async fn find_runepools(&self, params: &QueryParams) -> Result<Vec<RunePool>, Box<dyn std::error::Error>> {
+    pub async fn find_runepools(&self, params: &QueryParams) -> Result<Vec<RunePool>, Box<dyn personally::Error>> {
         self.find_records("runepool_history", params).await
     }
 
     pub async fn find_pool_activity(&self, pool_id: &str, params: &QueryParams) -> Result<Vec<PoolActivity>, Box<dyn std::error::Error>> {
         let client = self.pool.get().await?;
         let mut conditions = Vec::new();
-        let mut query_params = Vec::new();
+        let mut query_params: Vec<&dyn tokio_postgres::types::ToSql + Sync> = Vec::new();
 
         let mut query = String::from(
             "SELECT d.pool, d.asset_depth, d.rune_depth, d.asset_price, 
@@ -44,24 +44,24 @@ impl Database {
         query_params.push(pool_id);
 
         // Use date_range if present, else fallback to start_date and end_date
-        if let Some((start, end)) = params.date_range {
+        if let Some((start, end)) = &params.date_range {
             conditions.push(format!("d.timestamp >= ${}", query_params.len() + 1));
-            query_params.push(&start);
+            query_params.push(start);
             conditions.push(format!("d.timestamp <= ${}", query_params.len() + 1));
-            query_params.push(&end);
+            query_params.push(end);
         } else {
-            if let Some(start_date) = params.start_date {
+            if let Some(start_date) = &params.start_date {
                 conditions.push(format!("d.timestamp >= ${}", query_params.len() + 1));
-                query_params.push(&start_date);
+                query_params.push(start_date);
             }
-            if let Some(end_date) = params.end_date {
+            if let Some(end_date) = &params.end_date {
                 conditions.push(format!("d.timestamp <= ${}", query_params.len() + 1));
-                query_params.push(&end_date);
+                query_params.push(end_date);
             }
         }
-        if let Some(liquidity_gt) = params.liquidity_gt {
+        if let Some(liquidity_gt) = &params.liquidity_gt {
             conditions.push(format!("d.asset_depth > ${}", query_params.len() + 1));
-            query_params.push(&liquidity_gt);
+            query_params.push(liquidity_gt);
         }
 
         if !conditions.is_empty() {
@@ -96,7 +96,6 @@ fn build_query(table: &str, params: &QueryParams) -> String {
     let mut query = format!("SELECT * FROM {}", table);
     let mut conditions = Vec::new();
 
-    // Use date_range if present, else fallback to start_date and end_date
     if let Some((start, end)) = params.date_range {
         conditions.push(format!("timestamp >= '{}'", start));
         conditions.push(format!("timestamp <= '{}'", end));

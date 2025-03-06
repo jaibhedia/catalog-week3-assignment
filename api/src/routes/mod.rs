@@ -1,5 +1,4 @@
-use actix_web::{get, web, HttpResponse, Responder};
-use chrono::{DateTime, Utc};
+use actix_web::{get, web, HttpResponse};
 use crate::models::QueryParams;
 use crate::services::DepthService;
 
@@ -31,13 +30,12 @@ pub async fn get_runepool_history(query: web::Query<QueryParams>, service: web::
     }
 }
 
-// New endpoint for advanced querying
 #[get("/pool-activity/{pool_id}")]
 pub async fn get_pool_activity(
     path: web::Path<String>,
     query: web::Query<QueryParams>,
     service: web::Data<DepthService>,
-) -> impl Responder {
+) -> HttpResponse {
     match service.get_pool_activity(path.into_inner(), &query).await {
         Ok(activity) => HttpResponse::Ok().json(activity),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
@@ -51,6 +49,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/swaps-history", web::get().to(get_swaps_history))
             .route("/earnings-history", web::get().to(get_earnings_history))
             .route("/runepool-history", web::get().to(get_runepool_history))
-            .route("/pool-activity/{pool_id}", web::get().to(get_pool_activity)) // Add new route
+            .route("/pool-activity/{pool_id}", web::get().to(get_pool_activity))
     );
 }
