@@ -1,8 +1,10 @@
-use actix_web::{App, HttpServer, web};
+use actix_web::{App, HttpServer, web, middleware};
+use actix_cors::Cors;
 use deadpool_postgres::{Config as PgConfig, Runtime};
 use dotenv::dotenv;
 use std::env;
-use url::Url; // Add this dependency to Cargo.toml
+use url::Url;
+use log::info;
 use crate::routes::config;
 use crate::services::DepthService;
 use crate::jobs::setup_jobs;
@@ -19,11 +21,8 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
-    // Use DATABASE_URL from Render, fallback for local testing
     let database_url = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:Bhakwaas@csd37@localhost:5432/api".to_string());
-
-    // Parse the DATABASE_URL
     let url = Url::parse(&database_url)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
     let mut pg_config = PgConfig::new();
@@ -34,17 +33,26 @@ async fn main() -> std::io::Result<()> {
     pg_config.dbname = Some(url.path().trim_start_matches('/').to_string());
 
     let pool = pg_config.create_pool(Some(Runtime::Tokio1), tokio_postgres::NoTls)
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
     let service = DepthService::new(pool.clone());
     setup_jobs(pool.clone()).await.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
     let bind_address = format!("0.0.0.0:{}", port);
+    info!("Starting server on {}", bind_address);
 
     HttpServer::new(move || {
         App::new()
+            .wrap(
+                Cors::default()
+                    .allowed_origin("https://editor.swagger.io")
+                    .allowed_methods(vec!["GET"])
+                    .allowed_headers(vec![actix_web::http::header::ACCEPT])
+                    .supports_credentials()
+            )
             .app_data(web::Data::new(service.clone()))
+            .wrap(middleware::Logger::default())
             .configure(config)
     })
     .bind(&bind_address)?
