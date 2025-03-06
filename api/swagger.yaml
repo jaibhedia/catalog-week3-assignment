@@ -14,6 +14,12 @@ paths:
       summary: Retrieve depth and price history data
       description: Fetches historical depth and price data for liquidity pools from the database, populated hourly from the Midgard API.
       parameters:
+        - name: date_range
+          in: query
+          description: Date range in format 'start,end' (e.g., 2023-08-01T00:00:00Z,2023-09-01T00:00:00Z)
+          required: false
+          schema:
+            type: string
         - name: start_date
           in: query
           description: Start of the date range in ISO 8601 format (e.g., 2023-08-01T00:00:00Z)
@@ -92,6 +98,12 @@ paths:
       summary: Retrieve swaps history data
       description: Fetches historical swap data, including trading volume, from the database, populated hourly from the Midgard API.
       parameters:
+        - name: date_range
+          in: query
+          description: Date range in format 'start,end' (e.g., 2023-08-01T00:00:00Z,2023-09-01T00:00:00Z)
+          required: false
+          schema:
+            type: string
         - name: start_date
           in: query
           description: Start of the date range in ISO 8601 format
@@ -164,6 +176,12 @@ paths:
       summary: Retrieve earnings history data
       description: Fetches historical earnings data for liquidity pools from the database, populated hourly from the Midgard API.
       parameters:
+        - name: date_range
+          in: query
+          description: Date range in format 'start,end' (e.g., 2023-08-01T00:00:00Z,2023-09-01T00:00:00Z)
+          required: false
+          schema:
+            type: string
         - name: start_date
           in: query
           description: Start of the date range in ISO 8601 format
@@ -236,6 +254,12 @@ paths:
       summary: Retrieve RUNEPool history data
       description: Fetches historical data for RUNEPool total members and units from the database, populated hourly from the Midgard API.
       parameters:
+        - name: date_range
+          in: query
+          description: Date range in format 'start,end' (e.g., 2023-08-01T00:00:00Z,2023-09-01T00:00:00Z)
+          required: false
+          schema:
+            type: string
         - name: start_date
           in: query
           description: Start of the date range in ISO 8601 format
@@ -312,6 +336,12 @@ paths:
           in: path
           description: The liquidity pool identifier (e.g., BTC.BTC)
           required: true
+          schema:
+            type: string
+        - name: date_range
+          in: query
+          description: Date range in format 'start,end' (e.g., 2023-08-01T00:00:00Z,2023-09-01T00:00:00Z)
+          required: false
           schema:
             type: string
         - name: start_date
