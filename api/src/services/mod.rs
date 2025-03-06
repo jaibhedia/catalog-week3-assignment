@@ -1,6 +1,6 @@
 use deadpool_postgres::Pool;
 use crate::db::Database;
-use crate::models::{Depth, Swap, Earning, RunePool, QueryParams};
+use crate::models::{Depth, Swap, Earning, RunePool, QueryParams, PoolActivity}; // Add PoolActivity
 use crate::fetcher::{fetch_depth_data, fetch_swaps_data, fetch_earnings_data, fetch_runepool_data};
 
 #[derive(Clone)]
@@ -29,6 +29,11 @@ impl DepthService {
         self.db.find_runepools(params).await
     }
 
+    // New method for advanced querying
+    pub async fn get_pool_activity(&self, pool_id: String, params: &QueryParams) -> Result<Vec<PoolActivity>, Box<dyn std::error::Error>> {
+        self.db.find_pool_activity(&pool_id, params).await
+    }
+
     pub async fn fetch_and_store_depths(&self, client: &reqwest::Client) -> Result<(), Box<dyn std::error::Error>> {
         fetch_depth_data(&self.db.pool, client).await
     }
@@ -44,5 +49,4 @@ impl DepthService {
     pub async fn fetch_and_store_runepools(&self, client: &reqwest::Client) -> Result<(), Box<dyn std::error::Error>> {
         fetch_runepool_data(&self.db.pool, client).await
     }
-    
 }

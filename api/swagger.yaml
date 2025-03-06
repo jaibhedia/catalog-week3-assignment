@@ -306,7 +306,7 @@ paths:
   /api/pool-activity/{pool_id}:
     get:
       summary: Retrieve combined pool activity data
-      description: Fetches combined depth and swaps history data for a specific pool.
+      description: Fetches combined depth and swaps history data for a specific pool from the database, populated hourly from the Midgard API.
       parameters:
         - name: pool_id
           in: path
@@ -316,18 +316,37 @@ paths:
             type: string
         - name: start_date
           in: query
-          description: Start of the date range in ISO 8601 format
+          description: Start of the date range in ISO 8601 format (e.g., 2023-08-01T00:00:00Z)
           required: false
           schema:
             type: string
             format: date-time
         - name: end_date
           in: query
-          description: End of the date range in ISO 8601 format
+          description: End of the date range in ISO 8601 format (e.g., 2023-09-01T00:00:00Z)
           required: false
           schema:
             type: string
             format: date-time
+        - name: liquidity_gt
+          in: query
+          description: Filter for liquidity (asset_depth) greater than this value
+          required: false
+          schema:
+            type: integer
+        - name: sort_by
+          in: query
+          description: Field to sort by (e.g., timestamp, asset_depth, volume_usd)
+          required: false
+          schema:
+            type: string
+        - name: order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
         - name: page
           in: query
           description: Page number for pagination
@@ -475,26 +494,34 @@ components:
       properties:
         pool:
           type: string
+          description: The liquidity pool identifier
           example: BTC.BTC
         asset_depth:
           type: integer
+          description: The depth of the asset in the pool
           example: 150000
         rune_depth:
           type: integer
+          description: The depth of RUNE in the pool
           example: 300000
         asset_price:
           type: number
+          description: The price of the asset in RUNE
           example: 0.5
         swap_amount:
           type: integer
+          description: The amount of the asset swapped
           example: 500
         swap_fee:
           type: integer
+          description: The fee for the swap
           example: 10
         volume_usd:
           type: number
+          description: The trading volume in USD
           example: 1000.0
         timestamp:
           type: string
           format: date-time
+          description: The timestamp of the record
           example: 2023-08-01T00:00:00Z

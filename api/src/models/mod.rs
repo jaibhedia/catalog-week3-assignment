@@ -8,8 +8,18 @@ pub use swap::Swap;
 pub use earning::Earning;
 pub use runepool::RunePool;
 
-use serde::{Serialize, Deserialize};
-use chrono::{DateTime, Utc};
+// Add PoolActivity
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PoolActivity {
+    pub pool: String,
+    pub asset_depth: i64,
+    pub rune_depth: i64,
+    pub asset_price: f64,
+    pub swap_amount: i64,
+    pub swap_fee: i64,
+    pub volume_usd: f64,
+    pub timestamp: DateTime<Utc>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
