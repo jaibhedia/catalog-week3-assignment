@@ -4,11 +4,15 @@ info:
   description: API for querying historical data from the Midgard API, including depth and price history, earnings history, swaps history, and RUNEPool history.
   version: 1.0.0
 
+servers:
+  - url: https://catalog-week3-assignment-dwr0.onrender.com/
+    description: Production server hosted on Render
+
 paths:
   /api/depth-history:
     get:
       summary: Retrieve depth and price history data
-      description: Fetches historical depth and price data for liquidity pools.
+      description: Fetches historical depth and price data for liquidity pools from the database, populated hourly from the Midgard API.
       parameters:
         - name: start_date
           in: query
@@ -66,13 +70,27 @@ paths:
                   $ref: '#/components/schemas/Depth'
         '400':
           description: Bad request (invalid parameters)
+          content:
+            application/json:
+              example:
+                error: "Invalid limit parameter"
+        '429':
+          description: Too Many Requests - Rate limit exceeded by the Midgard API
+          content:
+            application/json:
+              example:
+                error: "Too many requests to Midgard API"
         '500':
           description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Failed to query database"
 
   /api/swaps-history:
     get:
       summary: Retrieve swaps history data
-      description: Fetches historical swap data, including trading volume.
+      description: Fetches historical swap data, including trading volume, from the database, populated hourly from the Midgard API.
       parameters:
         - name: start_date
           in: query
@@ -124,13 +142,27 @@ paths:
                   $ref: '#/components/schemas/Swap'
         '400':
           description: Bad request (invalid parameters)
+          content:
+            application/json:
+              example:
+                error: "Invalid page parameter"
+        '429':
+          description: Too Many Requests - Rate limit exceeded by the Midgard API
+          content:
+            application/json:
+              example:
+                error: "Too many requests to Midgard API"
         '500':
           description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Failed to query database"
 
   /api/earnings-history:
     get:
       summary: Retrieve earnings history data
-      description: Fetches historical earnings data for liquidity pools.
+      description: Fetches historical earnings data for liquidity pools from the database, populated hourly from the Midgard API.
       parameters:
         - name: start_date
           in: query
@@ -182,13 +214,27 @@ paths:
                   $ref: '#/components/schemas/Earning'
         '400':
           description: Bad request (invalid parameters)
+          content:
+            application/json:
+              example:
+                error: "Invalid sort_by parameter"
+        '429':
+          description: Too Many Requests - Rate limit exceeded by the Midgard API
+          content:
+            application/json:
+              example:
+                error: "Too many requests to Midgard API"
         '500':
           description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Failed to query database"
 
   /api/runepool-history:
     get:
       summary: Retrieve RUNEPool history data
-      description: Fetches historical data for RUNEPool total members and units.
+      description: Fetches historical data for RUNEPool total members and units from the database, populated hourly from the Midgard API.
       parameters:
         - name: start_date
           in: query
@@ -240,8 +286,87 @@ paths:
                   $ref: '#/components/schemas/RunePool'
         '400':
           description: Bad request (invalid parameters)
+          content:
+            application/json:
+              example:
+                error: "Invalid order parameter"
+        '429':
+          description: Too Many Requests - Rate limit exceeded by the Midgard API
+          content:
+            application/json:
+              example:
+                error: "Too many requests to Midgard API"
         '500':
           description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Failed to query database"
+
+  /api/pool-activity/{pool_id}:
+    get:
+      summary: Retrieve combined pool activity data
+      description: Fetches combined depth and swaps history data for a specific pool.
+      parameters:
+        - name: pool_id
+          in: path
+          description: The liquidity pool identifier (e.g., BTC.BTC)
+          required: true
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          description: Start of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          description: End of the date range in ISO 8601 format
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Number of records per page
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PoolActivity'
+        '400':
+          description: Bad request (invalid parameters)
+          content:
+            application/json:
+              example:
+                error: "Invalid page parameter"
+        '429':
+          description: Too Many Requests - Rate limit exceeded by the Midgard API
+          content:
+            application/json:
+              example:
+                error: "Too many requests to Midgard API"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              example:
+                error: "Failed to query database"
 
 components:
   schemas:
@@ -343,4 +468,33 @@ components:
           type: string
           format: date-time
           description: The timestamp of the record
+          example: 2023-08-01T00:00:00Z
+
+    PoolActivity:
+      type: object
+      properties:
+        pool:
+          type: string
+          example: BTC.BTC
+        asset_depth:
+          type: integer
+          example: 150000
+        rune_depth:
+          type: integer
+          example: 300000
+        asset_price:
+          type: number
+          example: 0.5
+        swap_amount:
+          type: integer
+          example: 500
+        swap_fee:
+          type: integer
+          example: 10
+        volume_usd:
+          type: number
+          example: 1000.0
+        timestamp:
+          type: string
+          format: date-time
           example: 2023-08-01T00:00:00Z
