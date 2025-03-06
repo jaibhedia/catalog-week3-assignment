@@ -2,44 +2,34 @@ use reqwest::Client;
 use deadpool_postgres::Pool;
 use crate::models::{Depth, Swap, Earning, RunePool};
 use chrono::{DateTime, Utc};
-use std::time::Duration;
-use tokio::time::sleep;
-use log::{info, error};
 
 pub async fn fetch_depth_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    let url = "https://midgard.ninerealms.com/v2/history/depths?pool=BTC.BTC&interval=day&count=100";
-    let mut attempts = 0;
-    let max_attempts = 3;
-
-    let response = loop {
-        let resp = client.get(url).send().await?;
-        match resp.status() {
-            reqwest::StatusCode::TOO_MANY_REQUESTS => {
-                attempts += 1;
-                if attempts >= max_attempts {
-                    return Err("Max retry attempts reached for depth data".into());
-                }
-                let delay = Duration::from_secs(2u64.pow(attempts as u32));
-                error!("429 Too Many Requests for depth data, retrying in {}s", delay.as_secs());
-                sleep(delay).await;
-            }
-            status if !status.is_success() => {
-                return Err(format!("Failed to fetch depth data: HTTP {}", status).into());
-            }
-            _ => break resp,
-        }
-    };
-
+    let url = "https://midgard.ninerealms.com/v2/history/depths/BTC.BTC?interval=day&count=100";
+    let response = client.get(url).send().await?;
+    if !response.status().is_success() {
+        return Err(format!("Failed to fetch depth data: HTTP {}", response.status()).into());
+    }
     let json: serde_json::Value = response.json().await?;
     let intervals = json["intervals"].as_array().ok_or("Expected 'intervals' array")?;
     let db_client = pool.get().await?;
     for interval in intervals {
-        let depth = Depth { /* ... */ };
-        db_client.execute(/* ... */).await?;
+        let depth = Depth {
+            pool: "BTC.BTC".to_string(),
+            asset_depth: interval["assetDepth"].as_str().unwrap_or("0").parse()?,
+            rune_depth: interval["runeDepth"].as_str().unwrap_or("0").parse()?,
+            asset_price: interval["assetPrice"].as_f64().unwrap_or(0.0),
+            timestamp: DateTime::from_timestamp(interval["endTime"].as_str().unwrap_or("0").parse::<i64>()? / 1000, 0)
+                .unwrap_or(DateTime::<Utc>::MIN_UTC),
+        };
+        db_client.execute(
+            "INSERT INTO depth_history (pool, asset_depth, rune_depth, asset_price, timestamp) 
+             VALUES ($1, $2, $3, $4, $5) ON CONFLICT (pool, timestamp) DO NOTHING",
+            &[&depth.pool, &depth.asset_depth, &depth.rune_depth, &depth.asset_price, &depth.timestamp],
+        ).await?;
     }
-    info!("Depth data inserted into database");
     Ok(())
 }
+
 pub async fn fetch_swaps_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let url = "https://midgard.ninerealms.com/v2/history/swaps?pool=BTC.BTC&interval=day&count=100";
     let response = client.get(url).send().await?;

@@ -30,35 +30,7 @@ pub async fn get_runepool_history(query: web::Query<QueryParams>, service: web::
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
     }
 }
-#[get("/api/pool-activity/{pool_id}")]
-async fn pool_activity(
-    path: web::Path<String>,
-    query: web::Query<PoolActivityQuery>,
-    service: web::Data<DepthService>,
-) -> impl Responder {
-    let pool_id = path.into_inner();
-    let result = service
-        .get_pool_activity(
-            pool_id,
-            query.start_date,
-            query.end_date,
-            query.page.unwrap_or(1),
-            query.limit.unwrap_or(10),
-        )
-        .await;
-    match result {
-        Ok(data) => HttpResponse::Ok().json(data),
-        Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
-    }
-}
 
-#[derive(serde::Deserialize)]
-struct PoolActivityQuery {
-    start_date: Option<DateTime<Utc>>,
-    end_date: Option<DateTime<Utc>>,
-    page: Option<i64>,
-    limit: Option<i64>,
-}
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
