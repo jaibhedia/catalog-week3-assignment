@@ -2,13 +2,28 @@ use reqwest::Client;
 use deadpool_postgres::Pool;
 use crate::models::{Depth, Swap, Earning, RunePool};
 use chrono::{DateTime, Utc};
+use std::time::Duration;
+use tokio::time::sleep;
 
 pub async fn fetch_depth_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let url = "https://midgard.ninerealms.com/v2/history/depths/BTC.BTC?interval=day&count=100";
-    let response = client.get(url).send().await?;
-    if !response.status().is_success() {
-        return Err(format!("Failed to fetch depth data: HTTP {}", response.status()).into());
-    }
+    let mut attempts = 0;
+    let max_attempts = 3;
+    let response = loop {
+        let resp = client.get(url).send().await?;
+        if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            attempts += 1;
+            if attempts >= max_attempts {
+                return Err(format!("Failed to fetch depth data after {} attempts: HTTP 429 Too Many Requests", max_attempts).into());
+            }
+            let delay = Duration::from_secs(2u64.pow(attempts as u32)); // Exponential backoff: 2s, 4s, 8s
+            sleep(delay).await;
+        } else if !resp.status().is_success() {
+            return Err(format!("Failed to fetch depth data: HTTP {}", resp.status()).into());
+        } else {
+            break resp;
+        }
+    };
     let json: serde_json::Value = response.json().await?;
     let intervals = json["intervals"].as_array().ok_or("Expected 'intervals' array")?;
     let db_client = pool.get().await?;
@@ -32,10 +47,23 @@ pub async fn fetch_depth_data(pool: &Pool, client: &Client) -> Result<(), Box<dy
 
 pub async fn fetch_swaps_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let url = "https://midgard.ninerealms.com/v2/history/swaps?pool=BTC.BTC&interval=day&count=100";
-    let response = client.get(url).send().await?;
-    if !response.status().is_success() {
-        return Err(format!("Failed to fetch swaps data: HTTP {}", response.status()).into());
-    }
+    let mut attempts = 0;
+    let max_attempts = 3;
+    let response = loop {
+        let resp = client.get(url).send().await?;
+        if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            attempts += 1;
+            if attempts >= max_attempts {
+                return Err(format!("Failed to fetch swaps data after {} attempts: HTTP 429 Too Many Requests", max_attempts).into());
+            }
+            let delay = Duration::from_secs(2u64.pow(attempts as u32));
+            sleep(delay).await;
+        } else if !resp.status().is_success() {
+            return Err(format!("Failed to fetch swaps data: HTTP {}", resp.status()).into());
+        } else {
+            break resp;
+        }
+    };
     let json: serde_json::Value = response.json().await?;
     let intervals = json["intervals"].as_array().ok_or("Expected 'intervals' array")?;
     let db_client = pool.get().await?;
@@ -61,10 +89,23 @@ pub async fn fetch_swaps_data(pool: &Pool, client: &Client) -> Result<(), Box<dy
 
 pub async fn fetch_earnings_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let url = "https://midgard.ninerealms.com/v2/history/earnings?interval=day&count=100";
-    let response = client.get(url).send().await?;
-    if !response.status().is_success() {
-        return Err(format!("Failed to fetch earnings data: HTTP {}", response.status()).into());
-    }
+    let mut attempts = 0;
+    let max_attempts = 3;
+    let response = loop {
+        let resp = client.get(url).send().await?;
+        if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            attempts += 1;
+            if attempts >= max_attempts {
+                return Err(format!("Failed to fetch earnings data after {} attempts: HTTP 429 Too Many Requests", max_attempts).into());
+            }
+            let delay = Duration::from_secs(2u64.pow(attempts as u32));
+            sleep(delay).await;
+        } else if !resp.status().is_success() {
+            return Err(format!("Failed to fetch earnings data: HTTP {}", resp.status()).into());
+        } else {
+            break resp;
+        }
+    };
     let json: serde_json::Value = response.json().await?;
     let intervals = json["intervals"].as_array().ok_or("Expected 'intervals' array")?;
     let db_client = pool.get().await?;
@@ -87,10 +128,23 @@ pub async fn fetch_earnings_data(pool: &Pool, client: &Client) -> Result<(), Box
 
 pub async fn fetch_runepool_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
     let url = "https://midgard.ninerealms.com/v2/history/runepool?interval=day&count=100";
-    let response = client.get(url).send().await?;
-    if !response.status().is_success() {
-        return Err(format!("Failed to fetch runepool data: HTTP {}", response.status()).into());
-    }
+    let mut attempts = 0;
+    let max_attempts = 3;
+    let response = loop {
+        let resp = client.get(url).send().await?;
+        if resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+            attempts += 1;
+            if attempts >= max_attempts {
+                return Err(format!("Failed to fetch runepool data after {} attempts: HTTP 429 Too Many Requests", max_attempts).into());
+            }
+            let delay = Duration::from_secs(2u64.pow(attempts as u32));
+            sleep(delay).await;
+        } else if !resp.status().is_success() {
+            return Err(format!("Failed to fetch runepool data: HTTP {}", resp.status()).into());
+        } else {
+            break resp;
+        }
+    };
     let json: serde_json::Value = response.json().await?;
     let intervals = json["intervals"].as_array().ok_or("Expected 'intervals' array")?;
     let db_client = pool.get().await?;
