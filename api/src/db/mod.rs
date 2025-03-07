@@ -32,7 +32,7 @@ impl Database {
         let client = self.pool.get().await?;
         let mut conditions = Vec::new();
         let mut query_params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
-    
+
         let mut query = String::from(
             "SELECT d.pool, d.asset_depth, d.rune_depth, d.asset_price, 
                     COALESCE(s.amount, 0) AS swap_amount, COALESCE(s.fee, 0) AS swap_fee, 
@@ -42,46 +42,48 @@ impl Database {
              WHERE d.pool = $1"
         );
         query_params.push(&pool_id);
-    
-        if let Some((start, end)) = params.date_range {
+
+        // Borrow from params.date_range directly
+        if let Some(date_range) = &params.date_range {
             conditions.push(format!("d.timestamp >= ${}", query_params.len() + 1));
-            query_params.push(start);
+            query_params.push(&date_range.0); // Reference to first element of tuple
             conditions.push(format!("d.timestamp <= ${}", query_params.len() + 1));
-            query_params.push(end);
+            query_params.push(&date_range.1); // Reference to second element of tuple
         } else {
-            if let Some(start_date) = params.start_date {
+            if let Some(start_date) = &params.start_date {
                 conditions.push(format!("d.timestamp >= ${}", query_params.len() + 1));
-                query_params.push(start_date);
+                query_params.push(start_date); // Direct reference to start_date
             }
-            if let Some(end_date) = params.end_date {
+            if let Some(end_date) = &params.end_date {
                 conditions.push(format!("d.timestamp <= ${}", query_params.len() + 1));
-                query_params.push(end_date);
+                query_params.push(end_date); // Direct reference to end_date
             }
         }
-        if let Some(liquidity_gt) = params.liquidity_gt {
+        if let Some(liquidity_gt) = &params.liquidity_gt {
             conditions.push(format!("d.asset_depth > ${}", query_params.len() + 1));
-            query_params.push(liquidity_gt);
+            query_params.push(liquidity_gt); // Direct reference to liquidity_gt
         }
-    
+
         if !conditions.is_empty() {
             query.push_str(" AND ");
             query.push_str(&conditions.join(" AND "));
         }
-    
+
         if let Some(ref sort_by) = params.sort_by {
             let order = params.order.as_deref().unwrap_or("asc");
             query.push_str(&format!(" ORDER BY {} {}", sort_by, order));
         }
-    
+
         let limit = params.limit.unwrap_or(10).min(100);
         let offset = params.page.unwrap_or(0) * limit;
         query.push_str(&format!(" LIMIT ${} OFFSET ${}", query_params.len() + 1, query_params.len() + 2));
         query_params.push(&limit);
         query_params.push(&offset);
-    
+
         let rows = client.query(&query, &query_params[..]).await?;
         Ok(rows.into_iter().map(PoolActivity::from).collect())
     }
+
     async fn find_records<T: From<tokio_postgres::Row> + Send + Sync>(&self, table: &str, params: &QueryParams) -> Result<Vec<T>, Box<dyn std::error::Error>> {
         let client = self.pool.get().await?;
         let query = build_query(table, params);

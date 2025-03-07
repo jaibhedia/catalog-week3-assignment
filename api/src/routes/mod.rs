@@ -1,4 +1,4 @@
-use actix_web::{get, web, HttpResponse};
+use actix_web::{web, HttpResponse};
 use crate::models::QueryParams;
 use crate::services::DepthService;
 
@@ -30,7 +30,6 @@ pub async fn get_runepool_history(query: web::Query<QueryParams>, service: web::
     }
 }
 
-#[get("/pool-activity/{pool_id}")]
 pub async fn get_pool_activity(
     path: web::Path<String>,
     query: web::Query<QueryParams>,
