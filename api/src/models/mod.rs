@@ -23,9 +23,10 @@ pub struct PoolActivity {
     pub timestamp: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
-    pub date_range: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_date_range")]
+    pub date_range: Option<(DateTime<Utc>, DateTime<Utc>)>, // New field
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
     pub liquidity_gt: Option<i64>,
@@ -33,24 +34,6 @@ pub struct QueryParams {
     pub order: Option<String>,
     pub page: Option<i64>,
     pub limit: Option<i64>,
-}
-
-pub fn parse_date_range(date_range: &str) -> Result<(DateTime<Utc>, DateTime<Utc>), Box<dyn Error>> {
-    let dates: Vec<&str> = date_range.split(',').collect();
-    if dates.len() != 2 {
-        return Err("Invalid date_range format. Expected 'start,end'".into());
-    }
-    let start = chrono::NaiveDate::parse_from_str(dates[0], "%Y-%m-%d")
-        .map_err(|e| format!("Failed to parse start date: {}", e))?
-        .and_hms_opt(0, 0, 0)
-        .ok_or("Invalid start time")?
-        .and_utc();
-    let end = chrono::NaiveDate::parse_from_str(dates[1], "%Y-%m-%d")
-        .map_err(|e| format!("Failed to parse end date: {}", e))?
-        .and_hms_opt(23, 59, 59)
-        .ok_or("Invalid end time")?
-        .and_utc();
-    Ok((start, end))
 }
 
 // Custom deserializer for date_range
