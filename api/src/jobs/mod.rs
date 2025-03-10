@@ -9,7 +9,7 @@ pub async fn setup_jobs(pool: Pool) -> Result<(), Box<dyn std::error::Error + Se
     let service = DepthService::new(pool.clone());
 
     info!("Setting up scheduled job");
-    let job = Job::new_async("0 0 * * * *", move |_, _| { // Every minute for testing
+    let job = Job::new_async("0 * * * * *", move |_, _| { 
         let client = client.clone();
         let service = service.clone();
         Box::pin(async move {
