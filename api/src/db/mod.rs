@@ -1,5 +1,5 @@
 use deadpool_postgres::Pool;
-use crate::models::{QueryParams, Depth, Swap, Earning, RunePool, PoolActivity};
+use crate::models::{QueryParams, DepthPrice, Swap, Earnings, RunePool, PoolActivity};
 use tokio_postgres::Row;
 
 #[derive(Clone)]
@@ -12,66 +12,63 @@ impl Database {
         Self { pool }
     }
 
-    pub async fn find_depths(&self, params: &QueryParams) -> Result<Vec<Depth>, Box<dyn std::error::Error>> {
-        self.find_records("depth_history", params).await
+    pub async fn find_depths(&self, params: &QueryParams) -> Result<Vec<DepthPrice>, Box<dyn std::error::Error>> {
+        self.find_records("depth_price_history", params).await
     }
 
     pub async fn find_swaps(&self, params: &QueryParams) -> Result<Vec<Swap>, Box<dyn std::error::Error>> {
         self.find_records("swaps_history", params).await
     }
 
-    pub async fn find_earnings(&self, params: &QueryParams) -> Result<Vec<Earning>, Box<dyn std::error::Error>> {
+    pub async fn find_earnings(&self, params: &QueryParams) -> Result<Vec<Earnings>, Box<dyn std::error::Error>> {
         self.find_records("earnings_history", params).await
     }
 
     pub async fn find_runepools(&self, params: &QueryParams) -> Result<Vec<RunePool>, Box<dyn std::error::Error>> {
-        self.find_records("runepool_history", params).await
+        self.find_records("rune_pool_history", params).await
     }
 
     pub async fn find_pool_activity(&self, pool_id: &str, params: &QueryParams) -> Result<Vec<PoolActivity>, Box<dyn std::error::Error>> {
         let client = self.pool.get().await?;
-        let mut conditions = Vec::new();
-        let mut query_params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
-
         let mut query = String::from(
             "SELECT d.pool, d.asset_depth, d.rune_depth, d.asset_price, 
-                    COALESCE(s.amount, 0) AS swap_amount, COALESCE(s.fee, 0) AS swap_fee, 
-                    COALESCE(s.volume_usd, 0.0) AS volume_usd, d.timestamp
-             FROM depth_history d
-             LEFT JOIN swaps_history s ON d.pool = s.pool AND d.timestamp = s.timestamp
+                    COALESCE(s.to_asset_volume, 0) AS to_asset_volume, 
+                    COALESCE(s.total_fees, 0) AS total_fees, 
+                    COALESCE(s.total_volume_usd, 0) AS total_volume_usd, 
+                    d.start_time, d.end_time
+             FROM depth_price_history d
+             LEFT JOIN swaps_history s ON d.pool = s.pool AND d.start_time = s.start_time AND d.end_time = s.end_time
              WHERE d.pool = $1"
         );
+        let mut query_params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = Vec::new();
         query_params.push(&pool_id);
 
-        // Borrow from params.date_range directly
         if let Some(date_range) = &params.date_range {
-            conditions.push(format!("d.timestamp >= ${}", query_params.len() + 1));
-            query_params.push(&date_range.0); // Reference to first element of tuple
-            conditions.push(format!("d.timestamp <= ${}", query_params.len() + 1));
-            query_params.push(&date_range.1); // Reference to second element of tuple
+            query.push_str(" AND d.start_time >= $2 AND d.end_time <= $3");
+            query_params.push(&date_range.0);
+            query_params.push(&date_range.1);
         } else {
             if let Some(start_date) = &params.start_date {
-                conditions.push(format!("d.timestamp >= ${}", query_params.len() + 1));
-                query_params.push(start_date); // Direct reference to start_date
+                query.push_str(" AND d.start_time >= $2");
+                query_params.push(start_date);
             }
             if let Some(end_date) = &params.end_date {
-                conditions.push(format!("d.timestamp <= ${}", query_params.len() + 1));
-                query_params.push(end_date); // Direct reference to end_date
+                let param_num = if query_params.len() == 1 { 2 } else { 3 };
+                query.push_str(&format!(" AND d.end_time <= ${}", param_num));
+                query_params.push(end_date);
             }
         }
         if let Some(liquidity_gt) = &params.liquidity_gt {
-            conditions.push(format!("d.asset_depth > ${}", query_params.len() + 1));
-            query_params.push(liquidity_gt); // Direct reference to liquidity_gt
-        }
-
-        if !conditions.is_empty() {
-            query.push_str(" AND ");
-            query.push_str(&conditions.join(" AND "));
+            let param_num = query_params.len() + 1;
+            query.push_str(&format!(" AND d.asset_depth > ${}", param_num));
+            query_params.push(liquidity_gt);
         }
 
         if let Some(ref sort_by) = params.sort_by {
             let order = params.order.as_deref().unwrap_or("asc");
             query.push_str(&format!(" ORDER BY {} {}", sort_by, order));
+        } else {
+            query.push_str(" ORDER BY d.start_time DESC");
         }
 
         let limit = params.limit.unwrap_or(10).min(100);
@@ -97,18 +94,20 @@ fn build_query(table: &str, params: &QueryParams) -> String {
     let mut conditions = Vec::new();
 
     if let Some((start, end)) = params.date_range {
-        conditions.push(format!("timestamp >= '{}'", start));
-        conditions.push(format!("timestamp <= '{}'", end));
+        conditions.push(format!("start_time >= '{}'", start));
+        conditions.push(format!("end_time <= '{}'", end));
     } else {
         if let Some(start_date) = params.start_date {
-            conditions.push(format!("timestamp >= '{}'", start_date));
+            conditions.push(format!("start_time >= '{}'", start_date));
         }
         if let Some(end_date) = params.end_date {
-            conditions.push(format!("timestamp <= '{}'", end_date));
+            conditions.push(format!("end_time <= '{}'", end_date));
         }
     }
     if let Some(liquidity_gt) = params.liquidity_gt {
-        conditions.push(format!("asset_depth > {}", liquidity_gt));
+        if table == "depth_price_history" {
+            conditions.push(format!("asset_depth > {}", liquidity_gt));
+        }
     }
 
     if !conditions.is_empty() {
@@ -119,6 +118,8 @@ fn build_query(table: &str, params: &QueryParams) -> String {
     if let Some(ref sort_by) = params.sort_by {
         let order = params.order.as_deref().unwrap_or("asc");
         query.push_str(&format!(" ORDER BY {} {}", sort_by, order));
+    } else {
+        query.push_str(" ORDER BY start_time DESC");
     }
 
     let limit = params.limit.unwrap_or(10).min(100);
@@ -126,19 +127,4 @@ fn build_query(table: &str, params: &QueryParams) -> String {
     query.push_str(&format!(" LIMIT {} OFFSET {}", limit, offset));
 
     query
-}
-
-impl From<Row> for PoolActivity {
-    fn from(row: Row) -> Self {
-        Self {
-            pool: row.get("pool"),
-            asset_depth: row.get("asset_depth"),
-            rune_depth: row.get("rune_depth"),
-            asset_price: row.get("asset_price"),
-            swap_amount: row.get("swap_amount"),
-            swap_fee: row.get("swap_fee"),
-            volume_usd: row.get("volume_usd"),
-            timestamp: row.get("timestamp"),
-        }
-    }
 }
