@@ -5,7 +5,7 @@ use tokio_postgres::Row;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Depth {
-    pub pool: String,  // Already correct
+    pub pool: String,  
     pub asset_depth: i64,
     pub rune_depth: i64,
     pub asset_price: f64,
