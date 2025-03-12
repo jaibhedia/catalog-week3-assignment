@@ -53,7 +53,7 @@ pub async fn fetch_depth_data(pool: &Pool, client: &Client) -> Result<(), Box<dy
 }
 
 pub async fn fetch_swaps_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    let url = "https://midgard.ninerealms.com/v2/history/swaps";
+    let url = "https://midgard.ninerealms.com/v2/history/swaps?interval=day&count=400";
     let mut attempts = 0;
     let max_attempts = 3;
     let response = loop {
@@ -127,7 +127,7 @@ pub async fn fetch_swaps_data(pool: &Pool, client: &Client) -> Result<(), Box<dy
 }
 
 pub async fn fetch_earnings_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    let url = "https://midgard.ninerealms.com/v2/history/earnings";
+    let url = "https://midgard.ninerealms.com/v2/history/earnings?interval=day&count=400";
     let mut attempts = 0;
     let max_attempts = 3;
     let response = loop {
@@ -192,7 +192,7 @@ pub async fn fetch_earnings_data(pool: &Pool, client: &Client) -> Result<(), Box
 }
 
 pub async fn fetch_runepool_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    let url = "https://midgard.ninerealms.com/v2/history/runepool";
+    let url = "https://midgard.ninerealms.com/v2/history/runepool?interval=day&count=400";
     let mut attempts = 0;
     let max_attempts = 3;
     let response = loop {
