@@ -127,7 +127,7 @@ pub async fn fetch_swaps_data(pool: &Pool, client: &Client) -> Result<(), Box<dy
 }
 
 pub async fn fetch_earnings_data(pool: &Pool, client: &Client) -> Result<(), Box<dyn std::error::Error>> {
-    let url = "https://midgard.ninerealms.com/v2/history";
+    let url = "https://midgard.ninerealms.com/v2/history/earnings";
     let mut attempts = 0;
     let max_attempts = 3;
     let response = loop {
